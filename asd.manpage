@@ -92,7 +92,7 @@ stop
 Turn off daemon; remove symlinks and rotate tmpfs data back to disc.
 .RE
 .PP
-It is highly recommended to start/stop the daemon at boot/shutdown. This is accomplished by adding \fIasd\fP to the DAEMONS array in /etc/rc.conf like so: 
+It is highly recommended to start/stop the daemon at boot/shutdown. This is accomplished by adding \fIasd\fP to the DAEMONS array in /etc/rc.conf like so:
 .PP
 .nf
 .fam C

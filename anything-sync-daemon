@@ -6,16 +6,16 @@ ASD_VERS="3.09"
 
 # nothing to do if there is no conf file
 if [[ ! -f /etc/asd.conf ]]; then
-	echo "Cannnot find /etc/asd.conf so bailing.  Reinstall package to use profile-sync-daemon."
-	exit 1
+    echo "Cannnot find /etc/asd.conf so bailing.  Reinstall package to use profile-sync-daemon."
+    exit 1
 else
-	. /etc/asd.conf
+    . /etc/asd.conf
 fi
 
 # nothing to do if these are empty
 if [[ -z "${WHATTOSYNC[0]}" ]]; then
-	echo "Must define at least one directory in the WHATTOSYNC array in /etc/asd.conf"
-	exit 1
+    echo "Must define at least one directory in the WHATTOSYNC array in /etc/asd.conf"
+    exit 1
 fi
 
 [[ -z "$VOLATILE" ]] && VOLATILE="/dev/shm"
@@ -28,148 +28,148 @@ fi
 DAEMON_FILE=${DAEMON_FILE:-"/run/asd"}
 
 root_check() {
-	# we call this to ensure that only the root user is calling the function
-	# why care? both the sync and unsync functions require root access to /run/asd (the pseudo pid file)
-	# running as unprivileged user will fuck up the sync process resulting in unhappy users
+    # we call this to ensure that only the root user is calling the function
+    # why care? both the sync and unsync functions require root access to /run/asd (the pseudo pid file)
+    # running as unprivileged user will fuck up the sync process resulting in unhappy users
 
-	if [[ $EUID -ne 0 ]]; then
-		echo "This function must be called as root!" 1>&2
-		exit 1
-	fi
+    if [[ $EUID -ne 0 ]]; then
+        echo "This function must be called as root!" 1>&2
+        exit 1
+    fi
 }
 
 check() {
-	root_check
-	local DIR USER BACKUP LINK
-	for DIR in "${WHATTOSYNC[@]}"; do
-		BACKUP="$DIR-backup_asd"  # this is the hdd bound backup in case of power failure
-		if [[ -d "$BACKUP" ]]; then
-			USER=$(stat -c %U "$BACKUP")
-		else
-			USER=$(stat -c %U "$DIR")
-		fi
-		LINK="$VOLATILE/asd-$USER$DIR"
+    root_check
+    local DIR USER BACKUP LINK
+    for DIR in "${WHATTOSYNC[@]}"; do
+        BACKUP="$DIR-backup_asd"  # this is the hdd bound backup in case of power failure
+        if [[ -d "$BACKUP" ]]; then
+            USER=$(stat -c %U "$BACKUP")
+        else
+            USER=$(stat -c %U "$DIR")
+        fi
+        LINK="$VOLATILE/asd-$USER$DIR"
 
-		# if the machine was ungracefully shutdown then the backup will be on the filesystem
-		# and the link to tmpfs will be on the filesystem but the contents will be empty
-		# we need to simply remove the link and rotate the backup into place
+        # if the machine was ungracefully shutdown then the backup will be on the filesystem
+        # and the link to tmpfs will be on the filesystem but the contents will be empty
+        # we need to simply remove the link and rotate the backup into place
 
-		if [[ -e "$LINK/.flagged" ]]; then
-			# all is well so continue
-			/bin/true
-		else
-			[[ -h "$DIR" ]] && unlink "$DIR"
-			[[ -d "$BACKUP" ]] && mv "$BACKUP" "$DIR"
-		fi
-	done
+        if [[ -e "$LINK/.flagged" ]]; then
+            # all is well so continue
+            /bin/true
+        else
+            [[ -h "$DIR" ]] && unlink "$DIR"
+            [[ -d "$BACKUP" ]] && mv "$BACKUP" "$DIR"
+        fi
+    done
 }
 
 sync() {
-	root_check
+    root_check
 
-	touch "$DAEMON_FILE"
+    touch "$DAEMON_FILE"
 
-	# sync to tmpfs and back again
-	local DIR USER GROUP BACKUP LINK
-	for DIR in "${WHATTOSYNC[@]}"; do
-		BACKUP="$DIR-backup_asd"  # this is the hdd bound backup in case of power failure
-		USER="$(stat -c %U $DIR)"
-		GROUP="$(stat -c %G $DIR)"
-		LINK="$VOLATILE/asd-$USER$DIR"
+    # sync to tmpfs and back again
+    local DIR USER GROUP BACKUP LINK
+    for DIR in "${WHATTOSYNC[@]}"; do
+        BACKUP="$DIR-backup_asd"  # this is the hdd bound backup in case of power failure
+        USER="$(stat -c %U $DIR)"
+        GROUP="$(stat -c %G $DIR)"
+        LINK="$VOLATILE/asd-$USER$DIR"
 
-		# make tmpfs container
-		if [[ -d "$DIR" ]]; then
-			[[ -r "$LINK" ]] || install -dm$PREFIX_PERMISSIONS --owner=$USER --group=$GROUP "$LINK"
+        # make tmpfs container
+        if [[ -d "$DIR" ]]; then
+            [[ -r "$LINK" ]] || install -dm$PREFIX_PERMISSIONS --owner=$USER --group=$GROUP "$LINK"
 
-			# backup target and link to tmpfs container
-			if [[ $(readlink "$DIR") != "$LINK" ]]; then
-				mv "$DIR" "$BACKUP"
-				ln -s "$LINK" "$DIR"
-				chown -h $USER:$GROUP "$DIR"
-			fi
+            # backup target and link to tmpfs container
+            if [[ $(readlink "$DIR") != "$LINK" ]]; then
+                mv "$DIR" "$BACKUP"
+                ln -s "$LINK" "$DIR"
+                chown -h $USER:$GROUP "$DIR"
+            fi
 
-			# sync the tmpfs targets to the disc
-			if [[ -e $LINK/.flagged ]]; then
-				rsync -aog --delete-after --delay-updates --exclude .flagged "$DIR/" "$BACKUP/"
-			else
-				rsync -aog --delay-updates "$BACKUP/" "$DIR/"
-				touch "$DIR/.flagged"
-			fi
-		fi
-	done
+            # sync the tmpfs targets to the disc
+            if [[ -e $LINK/.flagged ]]; then
+                rsync -aog --delete-after --delay-updates --exclude .flagged "$DIR/" "$BACKUP/"
+            else
+                rsync -aog --delay-updates "$BACKUP/" "$DIR/"
+                touch "$DIR/.flagged"
+            fi
+        fi
+    done
 }
 
 unsync() {
-	root_check
-	rm -f "$DAEMON_FILE"
+    root_check
+    rm -f "$DAEMON_FILE"
 
-	local DIR USER BACKUP LINK
-	for DIR in "${WHATTOSYNC[@]}"; do
-		BACKUP="$DIR-backup_asd"  # this is the hdd bound backup in case of power failure
-		USER="$(stat -c %U $DIR)"		
-		GROUP="$(stat -c %G $DIR)"
-		LINK="$VOLATILE/asd-$USER$DIR"
+    local DIR USER BACKUP LINK
+    for DIR in "${WHATTOSYNC[@]}"; do
+        BACKUP="$DIR-backup_asd"  # this is the hdd bound backup in case of power failure
+        USER="$(stat -c %U $DIR)"
+        GROUP="$(stat -c %G $DIR)"
+        LINK="$VOLATILE/asd-$USER$DIR"
 
-		# remove link and move data from tmpfs to disk
-		if [[ -h "$DIR" ]]; then
-			unlink "$DIR"
-			#	this assumes that the backup is always updated so be sure to invoke a sync
-			# before an unsync
-			#
-			# restore original dirtree
-			[[ -d "$BACKUP" ]] && mv "$BACKUP" "$DIR"
-			[[ -d "$LINK" ]] && rm -rf "$VOLATILE/asd-$USER"
-		fi
-	done
+        # remove link and move data from tmpfs to disk
+        if [[ -h "$DIR" ]]; then
+            unlink "$DIR"
+            # this assumes that the backup is always updated so be sure to invoke a sync
+            # before an unsync
+            #
+            # restore original dirtree
+            [[ -d "$BACKUP" ]] && mv "$BACKUP" "$DIR"
+            [[ -d "$LINK" ]] && rm -rf "$VOLATILE/asd-$USER"
+        fi
+    done
 }
 
 debug() {
-	echo -en "\E[31m::DEBUG MODE::"
-	tput sgr0 # reset colors to normal
-	echo
-	echo "anything-sync-daemon version: $ASD_VERS"
-	echo
-	echo "settings in /etc/asd.conf will make anything-sync-daemon manage the following dir/user combos when invoked:"
-	echo
+    echo -en "\E[31m::DEBUG MODE::"
+    tput sgr0 # reset colors to normal
+    echo
+    echo "anything-sync-daemon version: $ASD_VERS"
+    echo
+    echo "settings in /etc/asd.conf will make anything-sync-daemon manage the following dir/user combos when invoked:"
+    echo
 
-	local DIR USER GROUP BACKUP LINK
-	for DIR in "${WHATTOSYNC[@]}"; do
-		BACKUP="$DIR-backup_asd"  # this is the hdd bound backup in case of power failure
-		USER="$(stat -c %U $DIR)"
-		GROUP="$(stat -c %G $DIR)"
-		LINK="$VOLATILE/asd-$USER$DIR"
-		if [[ -d "$DIR" ]]; then
-			echo "target to manage:  $DIR"
-			echo "owner/group:       $USER:$GROUP"
-			echo "backup target:     $BACKUP"
-			echo "link target:       $LINK"
-			echo
-		fi
-	done
+    local DIR USER GROUP BACKUP LINK
+    for DIR in "${WHATTOSYNC[@]}"; do
+        BACKUP="$DIR-backup_asd"  # this is the hdd bound backup in case of power failure
+        USER="$(stat -c %U $DIR)"
+        GROUP="$(stat -c %G $DIR)"
+        LINK="$VOLATILE/asd-$USER$DIR"
+        if [[ -d "$DIR" ]]; then
+            echo "target to manage:  $DIR"
+            echo "owner/group:       $USER:$GROUP"
+            echo "backup target:     $BACKUP"
+            echo "link target:       $LINK"
+            echo
+        fi
+    done
 }
 
 case "$1" in
-	debug)
-		debug
-		;;
-	sync)
-		[[ ! -f $DAEMON_FILE ]] && check
-		sync
-		;;
-	resync)
-		[[ -f $DAEMON_FILE ]] && sync
-		;;
-	unsync)
-		# make sure the daemon ran to setup the links
-		[[ -f $DAEMON_FILE ]] && sync && unsync
-		;;
-	*)
-		echo -en "\E[31musage: "
-		tput sgr0 # reset colors to normal
-		echo "$0 {sync|unsync|debug}"
-		echo "  sync) Force a manual sync."
-		echo "unsync) Force a manual unsync."
-		echo " debug) Parse config file to make sure vars are correctly defined."
-		;;
+    debug)
+        debug
+        ;;
+    sync)
+        [[ ! -f $DAEMON_FILE ]] && check
+        sync
+        ;;
+    resync)
+        [[ -f $DAEMON_FILE ]] && sync
+        ;;
+    unsync)
+        # make sure the daemon ran to setup the links
+        [[ -f $DAEMON_FILE ]] && sync && unsync
+        ;;
+    *)
+        echo -en "\E[31musage: "
+        tput sgr0 # reset colors to normal
+        echo "$0 {sync|unsync|debug}"
+        echo "  sync) Force a manual sync."
+        echo "unsync) Force a manual unsync."
+        echo " debug) Parse config file to make sure vars are correctly defined."
+        ;;
 esac
 exit 0
