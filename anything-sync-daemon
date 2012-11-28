@@ -90,8 +90,10 @@ sync() {
 
             # sync the tmpfs targets to the disc
             if [[ -e $LINK/.flagged ]]; then
+                logger "Back syncronisation started from cache to \"$DIR\""
                 rsync -aog --delete-after --delay-updates --exclude .flagged "$DIR/" "$BACKUP/"
             else
+                logger "Syncronisation started from \"$DIR\" to cache"
                 rsync -aog --delay-updates "$BACKUP/" "$DIR/"
                 touch "$DIR/.flagged"
             fi
